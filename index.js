@@ -29,79 +29,81 @@ var sign = require('cookie-signature').sign;
  */
 
 module.exports = function csurf(options) {
-  options = options || {};
+    options = options || {};
 
-  // get cookie options
-  var cookie = options.cookie !== true
-    ? options.cookie || undefined
-    : {}
+    // get cookie options
+    var cookie = options.cookie !== true
+        ? options.cookie || undefined
+        : {}
 
-  // get value getter
-  var value = options.value || defaultValue
+    // get value getter
+    var value = options.value || defaultValue
 
-  // token repo
-  var tokens = csrfTokens(options);
+    // token repo
+    var tokens = csrfTokens(options);
 
-  // default cookie key
-  if (cookie && !cookie.key) {
-    cookie.key = '_csrf'
-  }
-
-  // ignored methods
-  var ignoreMethods = options.ignoreMethods === undefined
-    ? ['GET', 'HEAD', 'OPTIONS']
-    : options.ignoreMethods
-
-  if (!Array.isArray(ignoreMethods)) {
-    throw new TypeError('option ignoreMethods must be an array')
-  }
-
-  // generate lookup
-  var ignoreMethod = getIgnoredMethods(ignoreMethods)
-
-  return function csrf(req, res, next) {
-    var secret = getsecret(req, cookie)
-    var token
-
-    // lazy-load token getter
-    req.csrfToken = function csrfToken() {
-      var sec = !cookie
-        ? getsecret(req, cookie)
-        : secret
-
-      // use cached token if secret has not changed
-      if (token && sec === secret) {
-        return token
-      }
-
-      // generate & set new secret
-      if (sec === undefined) {
-        sec = tokens.secretSync()
-        setsecret(req, res, sec, cookie)
-      }
-
-      // update changed secret
-      secret = sec
-
-      // create new token
-      token = tokens.create(secret)
-
-      return token
+    // default cookie key
+    if (cookie && !cookie.key) {
+        cookie.key = '_csrf'
     }
 
-    // generate & set secret
-    if (!secret) {
-      secret = tokens.secretSync()
-      setsecret(req, res, secret, cookie)
+    // ignored methods
+    var ignoreMethods = options.ignoreMethods === undefined
+        ? ['GET', 'HEAD', 'OPTIONS']
+        : options.ignoreMethods
+
+    if (!Array.isArray(ignoreMethods)) {
+        throw new TypeError('option ignoreMethods must be an array')
     }
 
-    // verify the incoming token
-    if (!ignoreMethod[req.method]) {
-      verifytoken(req, tokens, secret, value(req))
-    }
+    // generate lookup
+    var ignoreMethod = getIgnoredMethods(ignoreMethods)
 
-    next()
-  }
+    var ignoreRequest = (options.ignoreRequest === undefined || typeof options.ignoreRequest !== "function") ? function () { return false } : options.ignoreRequest;
+
+    return function csrf(req, res, next) {
+        var secret = getsecret(req, cookie)
+        var token
+
+        // lazy-load token getter
+        req.csrfToken = function csrfToken() {
+            var sec = !cookie
+                ? getsecret(req, cookie)
+                : secret
+
+            // use cached token if secret has not changed
+            if (token && sec === secret) {
+                return token
+            }
+
+            // generate & set new secret
+            if (sec === undefined) {
+                sec = tokens.secretSync()
+                setsecret(req, res, sec, cookie)
+            }
+
+            // update changed secret
+            secret = sec
+
+            // create new token
+            token = tokens.create(secret)
+
+            return token
+        }
+
+        // generate & set secret
+        if (!secret) {
+            secret = tokens.secretSync()
+            setsecret(req, res, secret, cookie)
+        }
+
+        // verify the incoming token
+        if (!ignoreMethod[req.method] && !ignoreRequest(req)) {
+            verifytoken(req, tokens, secret, value(req))
+        }
+
+        next()
+    }
 };
 
 /**
@@ -114,10 +116,10 @@ module.exports = function csurf(options) {
  */
 
 function defaultValue(req) {
-  return (req.body && req.body._csrf)
-    || (req.query && req.query._csrf)
-    || (req.headers['x-csrf-token'])
-    || (req.headers['x-xsrf-token']);
+    return (req.body && req.body._csrf)
+        || (req.query && req.query._csrf)
+        || (req.headers['x-csrf-token'])
+        || (req.headers['x-xsrf-token']);
 }
 
 /**
@@ -129,14 +131,14 @@ function defaultValue(req) {
  */
 
 function getIgnoredMethods(methods) {
-  var obj = Object.create(null)
+    var obj = Object.create(null)
 
-  for (var i = 0; i < methods.length; i++) {
-    var method = methods[i].toUpperCase()
-    obj[method] = true
-  }
+    for (var i = 0; i < methods.length; i++) {
+        var method = methods[i].toUpperCase()
+        obj[method] = true
+    }
 
-  return obj
+    return obj
 }
 
 /**
@@ -148,23 +150,23 @@ function getIgnoredMethods(methods) {
  */
 
 function getsecret(req, cookie) {
-  var secret
+    var secret
 
-  if (cookie) {
-    // get secret from cookie
-    var bag = cookie.signed
-      ? 'signedCookies'
-      : 'cookies'
+    if (cookie) {
+        // get secret from cookie
+        var bag = cookie.signed
+            ? 'signedCookies'
+            : 'cookies'
 
-    secret = req[bag][cookie.key]
-  } else if (req.session) {
-    // get secret from session
-    secret = req.session.csrfSecret
-  } else {
-    throw new Error('misconfigured csrf')
-  }
+        secret = req[bag][cookie.key]
+    } else if (req.session) {
+        // get secret from session
+        secret = req.session.csrfSecret
+    } else {
+        throw new Error('misconfigured csrf')
+    }
 
-  return secret
+    return secret
 }
 
 /**
@@ -178,14 +180,14 @@ function getsecret(req, cookie) {
  */
 
 function setcookie(res, name, val, options) {
-  var data = Cookie.serialize(name, val, options);
+    var data = Cookie.serialize(name, val, options);
 
-  var prev = res.getHeader('set-cookie') || [];
-  var header = Array.isArray(prev) ? prev.concat(data)
-    : Array.isArray(data) ? [prev].concat(data)
-    : [prev, data];
+    var prev = res.getHeader('set-cookie') || [];
+    var header = Array.isArray(prev) ? prev.concat(data)
+        : Array.isArray(data) ? [prev].concat(data)
+        : [prev, data];
 
-  res.setHeader('set-cookie', header);
+    res.setHeader('set-cookie', header);
 }
 
 /**
@@ -199,26 +201,26 @@ function setcookie(res, name, val, options) {
  */
 
 function setsecret(req, res, val, cookie) {
-  if (cookie) {
-    // set secret on cookie
-    if (cookie.signed) {
-      var secret = req.secret
+    if (cookie) {
+        // set secret on cookie
+        if (cookie.signed) {
+            var secret = req.secret
 
-      if (!secret) {
-        throw new Error('cookieParser("secret") required for signed cookies')
-      }
+            if (!secret) {
+                throw new Error('cookieParser("secret") required for signed cookies')
+            }
 
-      val = 's:' + sign(val, secret)
+            val = 's:' + sign(val, secret)
+        }
+
+        setcookie(res, cookie.key, val, cookie);
+    } else if (req.session) {
+        // set secret on session
+        req.session.csrfSecret = val
+    } else {
+        /* istanbul ignore next: should never actually run */
+        throw new Error('misconfigured csrf')
     }
-
-    setcookie(res, cookie.key, val, cookie);
-  } else if (req.session) {
-    // set secret on session
-    req.session.csrfSecret = val
-  } else {
-    /* istanbul ignore next: should never actually run */
-    throw new Error('misconfigured csrf')
-  }
 }
 
 /**
@@ -232,10 +234,10 @@ function setsecret(req, res, val, cookie) {
  */
 
 function verifytoken(req, tokens, secret, val) {
-  // valid token
-  if (!tokens.verify(secret, val)) {
-    throw createError(403, 'invalid csrf token', {
-      code: 'EBADCSRFTOKEN'
-    });
-  }
+    // valid token
+    if (!tokens.verify(secret, val)) {
+        throw createError(403, 'invalid csrf token', {
+            code: 'EBADCSRFTOKEN'
+        });
+    }
 }
